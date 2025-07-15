@@ -1,0 +1,78 @@
+#include <crsRead/MCorsikaReader.h>
+#include <crs/TSubBlock.h>
+#include <crs/MRunHeader.h>
+#include <crs/MEventHeader.h>
+#include <crs/MEventEnd.h>
+#include <crs/MParticleBlock.h>
+#include <crs/MParticle.h>
+#include <TFile.h>
+#include <TTree.h>
+#include <iostream>
+#include <sstream>
+#include <vector>
+
+using namespace std;
+
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        cout << "Usage: " << argv[0] << " <path>" << endl;
+        return 1;
+    }
+
+    string fname(argv[1]);
+    crsRead::MCorsikaReader cr(fname, 3);
+
+    int ShowerCounter = 0;
+
+    crs::MRunHeader Run;
+    while (cr.GetRun(Run)) {
+        crs::MEventHeader Shower;
+        while (cr.GetShower(Shower)) {
+            ShowerCounter++;
+
+            int nMuons = 0;
+            vector<double> muonEnergies;  // store kinetic energies of muons
+
+            ostringstream oFileName;
+            oFileName << "Shower" << Shower.GetEventNumber() << ".root";
+            TFile oFile(oFileName.str().c_str(), "RECREATE");
+            TTree tree("Multiplicity", "Tree with number and energies of muons");
+
+            tree.Branch("nMuons", &nMuons, "nMuons/I");
+            tree.Branch("muonEnergies", &muonEnergies);  // auto-detect std::vector<double>
+
+            crs::TSubBlock Data;
+            while (cr.GetData(Data)) {
+                if (Data.GetBlockType() == crs::TSubBlock::ePARTDATA) {
+                    const crs::MParticleBlock& ParticleData = Data;
+                    crs::MParticleBlock::ParticleListConstIterator iEntry;
+                    for (iEntry = ParticleData.FirstParticle();
+                         iEntry != ParticleData.LastParticle();
+                         ++iEntry) {
+                        if (iEntry->IsParticle()) {
+                            crs::MParticle iPart(*iEntry);
+                            int particleID = iPart.GetParticleID();
+                            if (particleID == 5 || particleID == 6) { // muons
+                                double kinEnergy = iPart.GetKinEnergy();
+                                if (kinEnergy >= 0) {
+                                    nMuons++;
+                                    muonEnergies.push_back(kinEnergy);
+                                }
+                            }
+                        }
+                    }
+                }
+            } // loop over data blocks
+
+            tree.Fill();  // store nMuons and muonEnergies for this shower
+            oFile.cd();
+            tree.Write();
+            oFile.Close();
+        } // loop over showers
+    }
+
+    cout << "Read " << ShowerCounter << " showers from file." << endl;
+
+    return 0;
+}
+
