@@ -1,2 +1,3 @@
-Plotter code to extract the muon informations from the CORSIKA simulation output for conversion from binary file to root file.
-Code for plotting the histogram from the root file.
+After simulation of Extensive Air Shower using the CORSIKA Monte Carlo simulation.We have used the plotter code available in the COAST interface and modify the code a bit to extract the muon informations from the simulation output binary file to convert into root file. The KEmuon.txt file is the said plotter code. The  muon multiplicity per shower as well as its average KE are extracted. 
+
+For the plotting of histogram, we wrote a ROOT macro to read the root file and fill the histogram with necessary information required by accessing the required branches. The trial.cpp is for reading the muon multiplicity, for KE we can edit the code to access the branch containing the average KE.
